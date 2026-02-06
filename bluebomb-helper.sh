@@ -1,15 +1,10 @@
 #!/usr/bin/env bash
 
-# BlueBomb Helper Script
-# Origin    https://git.snopyta.org/twosecslater/bluebomb-helper.git
-# Authors   urmum_69, twosecslater
-
 if [[ -n $(uname -a | grep -i "Microsoft\|MSYS\|CYGWIN\|Darwin") ]]; then printf "\033[1;91mNOTICE\033[0m:\n======\n\nBlueBomb does NOT work under MacOS, Windows, nor the \"Windows Subsystem for Linux\"."; exit; fi
 
 version="0.1.3"
 helpmsg="Need further help? You can either join the Wii Mini Hacking Discord server (recommended) at https://discord.gg/6ryxnkS, or the Nintendo Homebrew Discord server at https://discord.gg/MWxPgEp. "
 
-# set variable $sudo if the user is not root, so sudo is only used if absolutely needed
 [[ $USER != "root" ]] && sudo0="sudo" || true
 
 sc() {
@@ -19,11 +14,9 @@ sc() {
     printf -- "=%.0s" $(seq "$(tput cols)") && printf "\n\n"
 }
 
-# clear and greet
 sc 0 "Welcome"
 printf "Hello %s, and welcome to the BlueBomb helper script.\n\nThis script will automatically check you have an environment capable of utilizing BlueBomb, download required files, and automate things as much as possible to make it easier for you, the end user, to perform the BlueBomb exploit on your Wii or Wii mini console.\n\n" "$USER" | fold -s -w "$(tput cols)"
 
-# error handling
 error() {
     sc 0 "Error"
     printf "\033[1;91mAn error has occurred.\033[0m\n\nERROR DETAILS:\n\t* Task: %s\n\t* Command: %s\n\t* Line: %s\n\t* Exit code: %s\n\n" "$task" "$BASH_COMMAND" "$1" "$2" | fold -s -w "$(tput cols)"
@@ -43,47 +36,27 @@ trap 'error $LINENO $?' ERR
 set -o pipefail
 set -o errtrace
 
-credit() {
-    #clear
-    sc 0 "Credits"
-    printf "CREDITS:\n
-    * Fullmetal5\t\t\tBlueBomb exploit
-    * urmum_69\t\t\t\tScript author
-    * twosecslater\t\t\tScript author
-    * Commandblock6417\t\t\tContributor
-    * Terry A. Davis\t\t\tMotivation\n\nHave fun running homebrew on your console!\n" | fold -s -w "$(tput cols)"
-    exit
-}
-
 ex() {
     printf "\n%s\n\n%s\n" "$1" "$helpmsg" | fold -s -w "$(tput cols)" && exit
 }
 
-
-# receive parameters given on command line
 while [[ "$1" =~ ^- && ! "$1" == "--" ]]; do case $1 in
     -v | --version ) printf "BlueBomb helper script\nVersion: %s\n" "$version" && exit ;;
     -r | --region ) shift; regionIn=$1 ;;
     -t | --console ) shift; consoleIn=$1 ;;
     -s | --sysmenu ) shift; sysmenuIn=$1 ;;
-    -c | --credits ) credit; exit ;;
     -h | --help ) printf "\nUsage: %s [options...]\n
     * -v --version\t\t\tDisplays the current version of the script.
     * -r --region <REGION>\t\tAllows you to select a region without needing to interact with the script.
     * -t --console <CONSOLE TYPE>\tAllows you to select a console type without needing to interact with the script.
     * -s --sysmenu <SYSMENU VERSION>\tAllows you to select a system menu version without needing to interact with the script.
-    * -c --credits\t\t\tDisplays the credits for this script.
     * -h --help\t\t\t\tDisplays this help message.\n\n%s\n" "$0" "$helpmsg" | fold -s -w "$(tput cols)"; exit ;;
 esac; shift; done
 if [[ "$1" == '--' ]]; then shift; fi
 
-# check prerequisites
-
 task="Checking prerequisites - Dependencies"
-## detect non-linux kernel users. itoddlers btfo.
 [[ -z "$(uname -s | grep 'Linux')" ]] && printf "\n\nThis script does not work on systems that don't use the Linux kernel.\n\n" && exit
 
-## detect architecture
 if [[ -n "$(uname -m | grep 'arm*\|aarch*')" ]]; then
     arch="arm"
 elif [[ -n "$(uname -m | grep 'x86_64')" ]]; then
@@ -96,32 +69,14 @@ else
 fi
 printf "* Detected architecture: %s\n\n" "$arch"
 
-## detect package manager
-
 dependencies=("unzip" "wget")
 
 printf "Checking dependencies...\n"
 
-# Package managers to test for
-pms=("pacman" # Arch, etc.
-    "apt-get" # Old Debian, etc.
-    "apt" # Debian, etc.
-    "brew" # macOS, etc.
-    "apk" # Alpine, etc.
-    "xbps-install" # Void, etc.
-    "emerge" # Gentoo, etc.
-    "zypper" # openSUSE, etc.
-    "dnf") # Fedora, etc.
-# Install commands for package managers (MUST BE IN SAME ORDER AS $pms)
-pmi=("pacman -S"
-    "apt-get install"
-    "apt install"
-    "brew install"
-    "apk add"
-    "xbps-install -S"
-    "emerge -aqv"
-    "zypper install"
-    "dnf install")
+pms=("apt-get"
+    "apt")
+pmi=("apt-get install"
+    "apt install")
 for i in "${pms[@]}"; do
     [[ -x "$(command -v ${i})" ]] && pm="${i}" || true # there is probably a more efficient way of doing this - twosecslater @ June 2020
 done; unset i
@@ -140,7 +95,6 @@ for i in "${missing[@]}"; do
     [[ -n $pm ]] && printf "\n* %s is missing! Attempting to install using detected package manager (you may be prompted for your password)...\n" "$i" | fold -s -w "$(tput cols)" && $sudo0 $pmi $(indep $i) || ex "* $i is missing! Please install it using your preferred package manager."
 done; unset i
 
-## detect init system
 if [[ -e "$(command -v systemctl)" ]]; then
     init="systemd"
 elif [[ -e "$(command -v openrc)" ]]; then
@@ -156,7 +110,6 @@ download() {
     [[ -e ./bluebomb/bluebomb-$arch ]] && printf "BlueBomb executable exists. Not downloading.\n" && cd bluebomb && return || true
     printf "* Downloading BlueBomb... "
     task="Download and extract BlueBomb"
-    ## download zip from github
     mkdir -p bluebomb && cd bluebomb || false
     wget -q --secure-protocol=TLSv1_2 "https://github.com/Fullmetal5/bluebomb/releases/download/1.5/bluebomb1.5.zip" -O bluebomb.zip
     printf "Success!\n\n* Unpacking BlueBomb... "
@@ -222,19 +175,12 @@ confirm() {
 
 execute() {
     sc 4 "Execute BlueBomb"
-    #task="Check existence of Bluetooth service for $init"
-    # Yet to finish implementation of this
-    #case $init in
-    #    "systemd" ) ;;
-    #    "openrc" ) if $(rc-service -e bluetooth); then bte=true; else bte=false; fi ;;
-    #esac
     task="Stop Bluetooth service for $init"
     printf "* Stopping the Bluetooth service... (you may be prompted for your password)\n"
     case $init in
         "systemd" ) $sudo0 systemctl disable --now bluetooth.service ;;
        "openrc" ) $sudo0 rc-service bluetooth stop ;;
     esac
-    #printf "\n* Waiting 5 seconds..." && sleep 5
     task="Execute BlueBomb"
     printf "\n* Executing BlueBomb...\n"
     printf "%s ./bluebomb-%s ./stage0/%s%s.bin stage1.bin\n" "$sudo0" "$arch" "$arg1" "$arg2"
@@ -249,7 +195,6 @@ execute() {
             esac ;;
     esac
     printf "\n\nExiting in 3 seconds..."; sleep 3
-    credit
 }
 
 ask() {
