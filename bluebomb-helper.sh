@@ -222,19 +222,12 @@ confirm() {
 
 execute() {
     sc 4 "Execute BlueBomb"
-    #task="Check existence of Bluetooth service for $init"
-    # Yet to finish implementation of this
-    #case $init in
-    #    "systemd" ) ;;
-    #    "openrc" ) if $(rc-service -e bluetooth); then bte=true; else bte=false; fi ;;
-    #esac
     task="Stop Bluetooth service for $init"
     printf "* Stopping the Bluetooth service... (you may be prompted for your password)\n"
     case $init in
         "systemd" ) $sudo0 systemctl disable --now bluetooth.service ;;
        "openrc" ) $sudo0 rc-service bluetooth stop ;;
     esac
-    #printf "\n* Waiting 5 seconds..." && sleep 5
     task="Execute BlueBomb"
     printf "\n* Executing BlueBomb...\n"
     printf "%s ./bluebomb-%s ./stage0/%s%s.bin stage1.bin\n" "$sudo0" "$arch" "$arg1" "$arg2"
